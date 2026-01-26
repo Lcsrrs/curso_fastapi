@@ -26,10 +26,10 @@ class User:
     email: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
-        init=False, server_default=func.now()
+        init=False, server_default=func.now(), nullable = False
     )
     updated_at: Mapped[datetime] = mapped_column(  # Exercício
-        init=False, server_default=func.now(), onupdate=func.now()
+        init=False, server_default=func.now(), onupdate=func.now(), nullable = False
     )
 
     todos: Mapped[list[Todo]] = relationship(
@@ -45,5 +45,11 @@ class Todo:
     title: Mapped[str]
     description: Mapped[str]
     state: Mapped[TodoState]
+    created_at: Mapped[datetime] = mapped_column(
+        init=False, server_default=func.now(), nullable = False
+    )
+    updated_at: Mapped[datetime] = mapped_column(  # Exercício
+        init=False, server_default=func.now(), onupdate=func.now(), nullable = False
+    )
 
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
