@@ -3,6 +3,7 @@ from http import HTTPStatus
 import factory
 import factory.fuzzy
 import pytest
+from sqlalchemy import select
 
 from fastapi_zero.models import Todo, TodoState
 
@@ -18,7 +19,7 @@ class TodoFactory(factory.Factory):
 
 
 def test_create_todo(client, token, mock_db_time):
-    with mock_db_time(model = Todo) as time:
+    with mock_db_time(model=Todo) as time:
         response = client.post(
             '/todos',
             headers={'Authorization': f'Bearer {token}'},
@@ -99,7 +100,7 @@ async def test_list_todos_filter_description_should_return_5_todos(
     await session.commit()
 
     response = client.get(
-        '/todos/?description=description',
+        '/todos/?description=desc',
         headers={'Authorization': f'Bearer {token}'},
     )
 
@@ -122,6 +123,66 @@ async def test_list_todos_filter_state_should_return_5_todos(
     )
 
     assert len(response.json()['todos']) == expected_todos
+
+
+@pytest.mark.asyncio
+async def test_list_todos_title_less_than_3(session, client, user, token):
+    session.add(TodoFactory.create(user_id=user.id, title='ab'))
+    await session.commit()
+
+    response = client.get(
+        '/todos/?state=ab',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.asyncio
+async def test_list_todos_title_more_than_20(session, client, token):
+    todo = TodoFactory.create(user_id=user.id, title='a' * 22)
+    session.add(todo)
+    await session.commit()
+
+    response = client.get(
+        f'/todos/?state={todo.title}',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.asyncio
+async def test_list_todos_content(session, client, user, token, mock_db_time):
+    with mock_db_time(model=Todo) as time:
+        todo = TodoFactory.create(user_id=user.id)
+        session.add(todo)
+        await session.commit()
+
+    response = client.get(
+        '/todos/',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.json()['todos'] == [
+        {
+            'id': todo.id,
+            'title': todo.title,
+            'description': todo.description,
+            'state': todo.state,
+            'created_at': time.isoformat(),
+            'updated_at': time.isoformat(),
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_invalid_state_value(session, user):
+    session.add(TodoFactory.create(user_id=user.id, state='invalid'))
+    await session.commit()
+
+    with pytest.raises(LookupError):
+        await session.scalar(select(Todo))
 
 
 def test_delete_todo_error(client, token):
@@ -192,5 +253,3 @@ async def test_patch_todo(session, client, user, token):
 
     assert response.status_code == HTTPStatus.OK
     assert response.json()['title'] == 'Teste'
-
-
