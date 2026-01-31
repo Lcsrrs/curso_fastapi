@@ -4,6 +4,7 @@ import factory
 import factory.fuzzy
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import DataError
 
 from fastapi_zero.models import Todo, TodoState
 
@@ -139,7 +140,7 @@ async def test_list_todos_title_less_than_3(session, client, user, token):
 
 
 @pytest.mark.asyncio
-async def test_list_todos_title_more_than_20(session, client, token):
+async def test_list_todos_title_more_than_20(session, user, client, token):
     todo = TodoFactory.create(user_id=user.id, title='a' * 22)
     session.add(todo)
     await session.commit()
@@ -181,7 +182,7 @@ async def test_invalid_state_value(session, user):
     session.add(TodoFactory.create(user_id=user.id, state='invalid'))
     await session.commit()
 
-    with pytest.raises(LookupError):
+    with pytest.raises(DataError):
         await session.scalar(select(Todo))
 
 
