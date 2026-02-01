@@ -3,7 +3,6 @@ from http import HTTPStatus
 import factory
 import factory.fuzzy
 import pytest
-from sqlalchemy import select
 from sqlalchemy.exc import DataError
 
 from fastapi_zero.models import Todo, TodoState
@@ -180,10 +179,8 @@ async def test_list_todos_content(session, client, user, token, mock_db_time):
 @pytest.mark.asyncio
 async def test_invalid_state_value(session, user):
     session.add(TodoFactory.create(user_id=user.id, state='invalid'))
-    await session.commit()
-
     with pytest.raises(DataError):
-        await session.scalar(select(Todo))
+        await session.commit()
 
 
 def test_delete_todo_error(client, token):
